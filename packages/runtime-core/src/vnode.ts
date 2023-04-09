@@ -412,7 +412,7 @@ const normalizeRef = ({
       : null
   ) as any
 }
-
+/** 普通元素的VNode 函数*/
 function createBaseVNode(
   type: VNodeTypes | ClassComponent | typeof NULL_DYNAMIC_COMPONENT,
   props: (Data & VNodeProps) | null = null,
@@ -503,7 +503,7 @@ export { createBaseVNode as createElementVNode }
 export const createVNode = (
   __DEV__ ? createVNodeWithArgsTransform : _createVNode
 ) as typeof _createVNode
-
+/**组件的VNode函数*/
 function _createVNode(
   type: VNodeTypes | ClassComponent | typeof NULL_DYNAMIC_COMPONENT,
   props: (Data & VNodeProps) | null = null,
