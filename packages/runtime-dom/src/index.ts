@@ -38,6 +38,10 @@ let renderer: Renderer<Element | ShadowRoot> | HydrationRenderer
 
 let enabledHydration = false
 
+/**
+ * @description: 包含平台渲染核心逻辑的js对象
+ * rendererOptions: 与平台渲染相关的一些配置,比如更新属性,操作dom的函数等等
+ */
 function ensureRenderer() {
   return (
     renderer ||
@@ -62,6 +66,13 @@ export const hydrate = ((...args) => {
   ensureHydrationRenderer().hydrate(...args)
 }) as RootHydrateFunction
 
+/**
+ * @description: 组件初始化函数
+ *  1: 创建app对象
+ *  2: 重写app.mout函数
+ *  为什么需要重写mout函数?
+ *  因为mout函数内的渲染代码都是与平台无关的
+ */
 export const createApp = ((...args) => {
   const app = ensureRenderer().createApp(...args)
 
@@ -72,10 +83,12 @@ export const createApp = ((...args) => {
 
   const { mount } = app
   app.mount = (containerOrSelector: Element | ShadowRoot | string): any => {
+    // 标准化容器
     const container = normalizeContainer(containerOrSelector)
     if (!container) return
 
     const component = app._component
+    // 如果组件对象没有定义render函数和template模板,则取容器的innerHTML作为组件模板内容
     if (!isFunction(component) && !component.render && !component.template) {
       // __UNSAFE__
       // Reason: potential execution of JS expressions in in-DOM template.
@@ -104,6 +117,7 @@ export const createApp = ((...args) => {
       container.removeAttribute('v-cloak')
       container.setAttribute('data-v-app', '')
     }
+    // 正正的挂载
     return proxy
   }
 
@@ -176,6 +190,10 @@ function injectCompilerOptionsCheck(app: App) {
   }
 }
 
+/**
+ * @description: 容器标准化
+ * 如果是字符串选择器则转换成dom对象
+ */
 function normalizeContainer(
   container: Element | ShadowRoot | string
 ): Element | null {

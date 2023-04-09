@@ -354,11 +354,14 @@ function baseCreateRenderer(
 
   // Note: functions inside this closure should use `const xxx = () => {}`
   // style in order to prevent being inlined by minifiers.
+  /** subTree 的挂载
+   * 1: 根据vnode挂载DOM
+   * 2: 根据vnode更新DOM*/
   const patch: PatchFn = (
-    n1,
-    n2,
-    container,
-    anchor = null,
+    n1, // 表示旧的VNode， 当n1为null的时候，就表示是一次挂载。
+    n2, // 表示旧的VNode, 根据n2的type进行不同的处理逻辑。
+    container, // 渲染后会将VNode渲染到container中。
+    anchor = null, // 挂载参考的锚点, 在后续执行DOM挂载操作的时候会以它为参考点
     parentComponent = null,
     parentSuspense = null,
     isSVG = false,
@@ -383,20 +386,20 @@ function baseCreateRenderer(
 
     const { type, ref, shapeFlag } = n2
     switch (type) {
-      case Text:
+      case Text: // 处理文本节点
         processText(n1, n2, container, anchor)
         break
-      case Comment:
+      case Comment: // 处理注释节点
         processCommentNode(n1, n2, container, anchor)
         break
-      case Static:
+      case Static: // 处理静态节点
         if (n1 == null) {
           mountStaticNode(n2, container, anchor, isSVG)
         } else if (__DEV__) {
           patchStaticNode(n1, n2, container, isSVG)
         }
         break
-      case Fragment:
+      case Fragment: //处理没有跟组件的情况 && 处理Fragment节点
         processFragment(
           n1,
           n2,
@@ -411,6 +414,7 @@ function baseCreateRenderer(
         break
       default:
         if (shapeFlag & ShapeFlags.ELEMENT) {
+          // 处理普通的DOM元素 div/button/span/a/img/input
           processElement(
             n1,
             n2,
@@ -424,6 +428,7 @@ function baseCreateRenderer(
           )
         } else if (shapeFlag & ShapeFlags.COMPONENT) {
           processComponent(
+            // 处理组件节点。 vnode => <app/>
             n1,
             n2,
             container,
@@ -435,6 +440,7 @@ function baseCreateRenderer(
             optimized
           )
         } else if (shapeFlag & ShapeFlags.TELEPORT) {
+          // 处理teleport
           ;(type as typeof TeleportImpl).process(
             n1 as TeleportVNode,
             n2 as TeleportVNode,
@@ -449,6 +455,7 @@ function baseCreateRenderer(
           )
         } else if (__FEATURE_SUSPENSE__ && shapeFlag & ShapeFlags.SUSPENSE) {
           ;(type as typeof SuspenseImpl).process(
+            // 处理suspense， 目前还是个实验性功能
             n1,
             n2,
             container,
@@ -572,7 +579,7 @@ function baseCreateRenderer(
     }
     hostRemove(anchor!)
   }
-
+  /** 普通DOM元素的处理函数 */
   const processElement = (
     n1: VNode | null,
     n2: VNode,
@@ -586,6 +593,7 @@ function baseCreateRenderer(
   ) => {
     isSVG = isSVG || (n2.type as string) === 'svg'
     if (n1 == null) {
+      // n1 为Null则表示第一次挂载, 直接调用mountElement
       mountElement(
         n2,
         container,
@@ -597,6 +605,7 @@ function baseCreateRenderer(
         optimized
       )
     } else {
+      // 否则执行更新元素节点的逻辑
       patchElement(
         n1,
         n2,
@@ -608,7 +617,11 @@ function baseCreateRenderer(
       )
     }
   }
-
+  /** 挂载普通元素的函数
+   * 1: 创建DOM元素节点
+   * 2: 处理children
+   * 3: 处理props
+   * 4: 挂载dom元素到container上*/
   const mountElement = (
     vnode: VNode,
     container: RendererElement,
@@ -619,10 +632,11 @@ function baseCreateRenderer(
     slotScopeIds: string[] | null,
     optimized: boolean
   ) => {
+    // 创建DOM元素节点
     let el: RendererElement
     let vnodeHook: VNodeHook | undefined | null
     const { type, props, shapeFlag, transition, dirs } = vnode
-
+    // 这是一个与平台无关的函数
     el = vnode.el = hostCreateElement(
       vnode.type as string,
       isSVG,
@@ -633,8 +647,10 @@ function baseCreateRenderer(
     // mount children first, since some props may rely on child content
     // being already rendered, e.g. `<select value>`
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      // 处理子节点vnode是纯文本情况
       hostSetElementText(el, vnode.children as string)
     } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+      // 处理子节点vnode是数组的情况
       mountChildren(
         vnode.children as VNodeArrayChildren,
         el,
@@ -654,6 +670,7 @@ function baseCreateRenderer(
     setScopeId(el, vnode, vnode.scopeId, slotScopeIds, parentComponent)
     // props
     if (props) {
+      // 处理props ,比如: class, style , events 等属性
       for (const key in props) {
         if (key !== 'value' && !isReservedProp(key)) {
           hostPatchProp(
@@ -708,6 +725,7 @@ function baseCreateRenderer(
     if (needCallTransitionHooks) {
       transition!.beforeEnter(el)
     }
+    // 把创建的dom元素挂载到cintainer节点上
     hostInsert(el, container, anchor)
     if (
       (vnodeHook = props && props.onVnodeMounted) ||
@@ -759,7 +777,7 @@ function baseCreateRenderer(
       }
     }
   }
-
+  /** 处理子节点是数组的函数 */
   const mountChildren: MountChildrenFn = (
     children,
     container,
@@ -776,6 +794,7 @@ function baseCreateRenderer(
         ? cloneIfMounted(children[i] as VNode)
         : normalizeVNode(children[i]))
       patch(
+        // 递归调用patch函数, 这里执行patch函数是因为不确定子节点有什么类型
         null,
         child,
         container,
@@ -1155,6 +1174,7 @@ function baseCreateRenderer(
   ) => {
     n2.slotScopeIds = slotScopeIds
     if (n1 == null) {
+      // 组件第一次加载
       if (n2.shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE) {
         ;(parentComponent!.ctx as KeepAliveContext).activate(
           n2,
@@ -1164,6 +1184,7 @@ function baseCreateRenderer(
           optimized
         )
       } else {
+        // 挂载组件
         mountComponent(
           n2,
           container,
@@ -1175,10 +1196,11 @@ function baseCreateRenderer(
         )
       }
     } else {
+      // 更新组件
       updateComponent(n1, n2, optimized)
     }
   }
-
+  /** 挂载组件*/
   const mountComponent: MountComponentFn = (
     initialVNode,
     container,
@@ -2315,16 +2337,23 @@ function baseCreateRenderer(
     return hostNextSibling((vnode.anchor || vnode.el)!)
   }
 
+  /**
+   * @description: 组件渲染的核心逻辑
+   *
+   */
   const render: RootRenderFunction = (vnode, container, isSVG) => {
     if (vnode == null) {
+      // 销毁组件
       if (container._vnode) {
         unmount(container._vnode, null, null, true)
       }
     } else {
+      // 创建或者更新组件
       patch(container._vnode || null, vnode, container, null, null, null, isSVG)
     }
     flushPreFlushCbs()
     flushPostFlushCbs()
+    // 缓存vnode节点. 表示已经渲染
     container._vnode = vnode
   }
 

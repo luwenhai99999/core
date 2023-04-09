@@ -40,6 +40,7 @@ export function markAttrsAccessed() {
 
 type SetRootFn = ((root: VNode) => void) | undefined
 
+/** 渲染组件生成subTree */
 export function renderComponentRoot(
   instance: ComponentInternalInstance
 ): VNode {
