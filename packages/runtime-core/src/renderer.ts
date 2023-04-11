@@ -1834,10 +1834,10 @@ function baseCreateRenderer(
     slotScopeIds: string[] | null,
     optimized: boolean
   ) => {
-    let i = 0
+    let i = 0 // 从头部开始同步
     const l2 = c2.length
-    let e1 = c1.length - 1 // prev ending index
-    let e2 = l2 - 1 // next ending index
+    let e1 = c1.length - 1 // prev ending index// 旧子节点的尾部索引
+    let e2 = l2 - 1 // next ending index // 新子节点的尾部索引
 
     // 1. sync from start
     // (a b) c
@@ -1848,6 +1848,7 @@ function baseCreateRenderer(
         ? cloneIfMounted(c2[i] as VNode)
         : normalizeVNode(c2[i]))
       if (isSameVNodeType(n1, n2)) {
+        // 相同的节点,递归执行patch更新节点, 如果不同或者索引大于e1或者e2则跳出循环,同步过程结束
         patch(
           n1,
           n2,
@@ -1874,6 +1875,7 @@ function baseCreateRenderer(
         ? cloneIfMounted(c2[e2] as VNode)
         : normalizeVNode(c2[e2]))
       if (isSameVNodeType(n1, n2)) {
+        // 从尾部开始, 依次对比新旧节点, 如果相同, 则执行patch,如果不同或者索引i大于等于el && i 大于 e2则同步过程结束
         patch(
           n1,
           n2,
@@ -1891,7 +1893,12 @@ function baseCreateRenderer(
       e1--
       e2--
     }
-
+    /**
+     * 代码运行到这里就只剩下三种情况,
+     * 1: 新子节点有剩余, 要添加新节点
+     * 2: 旧子节点有剩余, 要删除多余节点
+     * 3: 未知子序列
+     */
     // 3. common sequence + mount
     // (a b)
     // (a b) c
@@ -1904,6 +1911,7 @@ function baseCreateRenderer(
         const nextPos = e2 + 1
         const anchor = nextPos < l2 ? (c2[nextPos] as VNode).el : parentAnchor
         while (i <= e2) {
+          //情况1: 挂载剩余的节点
           patch(
             null,
             (c2[i] = optimized
@@ -1931,20 +1939,25 @@ function baseCreateRenderer(
     // i = 0, e1 = 0, e2 = -1
     else if (i > e2) {
       while (i <= e1) {
+        //情况2: 删除剩余的节点
         unmount(c1[i], parentComponent, parentSuspense, true)
         i++
       }
     }
-
+    // 情况3
     // 5. unknown sequence
     // [i ... e1 + 1]: a b [c d e] f g
     // [i ... e2 + 1]: a b [e d c h] f g
     // i = 2, e1 = 4, e2 = 5
     else {
-      const s1 = i // prev starting index
-      const s2 = i // next starting index
-
+      const s1 = i // prev starting index // 旧子序列开始索引, 从 i 开始记录
+      const s2 = i // next starting index// 新子序列索引, 从i开始记录
+      /**
+       * 建立索引图:
+       *    在新旧子序列的节点中, 我们认为如果key相同,那么他们就是同一个节点, 直接执行patch即可
+       */
       // 5.1 build key:index map for newChildren
+      // 根据key建立新的子序列的索引图
       const keyToNewIndexMap: Map<string | number | symbol, number> = new Map()
       for (i = s2; i <= e2; i++) {
         const nextChild = (c2[i] = optimized
@@ -1964,23 +1977,29 @@ function baseCreateRenderer(
 
       // 5.2 loop through old children left to be patched and try to patch
       // matching nodes & remove nodes that are no longer present
+      // 正序遍历旧子序列, 更新匹配的节点, 删除不在新子序列中的节点, 判断是否有需要移动的节点
       let j
-      let patched = 0
-      const toBePatched = e2 - s2 + 1
-      let moved = false
+      let patched = 0 // 新子序列已更新节点的数量
+      const toBePatched = e2 - s2 + 1 // 新子序列待更新节点的数量, 等于新子序列的长度
+      let moved = false // 是否存在要移动的节点
       // used to track whether any node has moved
-      let maxNewIndexSoFar = 0
+      let maxNewIndexSoFar = 0 // 用于跟踪判断是否有节点需要移动
       // works as Map<newIndex, oldIndex>
       // Note that oldIndex is offset by +1
       // and oldIndex = 0 is a special value indicating the new node has
       // no corresponding old node.
       // used for determining longest stable subsequence
+      // 这个数组存储新子序列中的元素在旧子序列节点处的索引, 用于确定最长递增子序列
       const newIndexToOldIndexMap = new Array(toBePatched)
+      // 初始化数组,每个元素的值都为0
+      // 0是个特殊值, 如果遍历之后仍有元素的值为0,则说明这个新节点没有对应的旧节点
       for (i = 0; i < toBePatched; i++) newIndexToOldIndexMap[i] = 0
-
+      // 正序遍历旧子序列
       for (i = s1; i <= e1; i++) {
+        // 获取每一个旧子序列节点
         const prevChild = c1[i]
         if (patched >= toBePatched) {
+          // 所有新的子序列节点都已经更新, 删除剩余的节点
           // all new children have been patched so this can only be a removal
           unmount(prevChild, parentComponent, parentSuspense, true)
           continue
