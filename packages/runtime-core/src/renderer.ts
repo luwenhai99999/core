@@ -2006,6 +2006,7 @@ function baseCreateRenderer(
         }
         let newIndex
         if (prevChild.key != null) {
+          // 查找旧子序列中的节点在新子序列中的索引
           newIndex = keyToNewIndexMap.get(prevChild.key)
         } else {
           // key-less node, try to locate a key-less node of the same type
@@ -2019,15 +2020,19 @@ function baseCreateRenderer(
             }
           }
         }
+        // 找不到则说明旧子序列的节点已经不存在于新子序列中, 删除该节点
         if (newIndex === undefined) {
           unmount(prevChild, parentComponent, parentSuspense, true)
         } else {
+          // 更新新子序列中的元素在旧子序列中的索引, 这里＋1偏移是为了避免i为0的特殊情况影响对后续最长递增子序列的求解
           newIndexToOldIndexMap[newIndex - s2] = i + 1
+          //maxNewIndexSoFar存储的始终是上次求值的newIndex, 如果不是一直递增, 则说明有移动
           if (newIndex >= maxNewIndexSoFar) {
             maxNewIndexSoFar = newIndex
           } else {
             moved = true
           }
+          // 更新修旧子序列中匹配的节点
           patch(
             prevChild,
             c2[newIndex] as VNode,
@@ -2045,18 +2050,23 @@ function baseCreateRenderer(
 
       // 5.3 move and mount
       // generate longest stable subsequence only when nodes have moved
+      // 移动和挂载新节点
+      // 仅当节点移动时生成最长递增子序列
       const increasingNewIndexSequence = moved
         ? getSequence(newIndexToOldIndexMap)
         : EMPTY_ARR
       j = increasingNewIndexSequence.length - 1
       // looping backwards so that we can use last patched node as anchor
+      // 倒序遍历, 以便使用最后更新的节点作为锚点
       for (i = toBePatched - 1; i >= 0; i--) {
         const nextIndex = s2 + i
         const nextChild = c2[nextIndex] as VNode
+        // 锚点指向上一个更新的节点,如果nextIndex超过新子节点的长度, 则指向parentAnchor
         const anchor =
           nextIndex + 1 < l2 ? (c2[nextIndex + 1] as VNode).el : parentAnchor
         if (newIndexToOldIndexMap[i] === 0) {
           // mount new
+          // 挂载新节点
           patch(
             null,
             nextChild,
@@ -2072,9 +2082,11 @@ function baseCreateRenderer(
           // move if:
           // There is no stable subsequence (e.g. a reverse)
           // OR current node is not among the stable sequence
+          // 没有最长递增子序列, 或者当前的节点索引不在最长递增子序列中, 需要移动
           if (j < 0 || i !== increasingNewIndexSequence[j]) {
             move(nextChild, container, anchor, MoveType.REORDER)
           } else {
+            // 倒序递增子序列
             j--
           }
         }
@@ -2505,40 +2517,55 @@ export function traverseStaticChildren(n1: VNode, n2: VNode, shallow = false) {
 }
 
 // https://en.wikipedia.org/wiki/Longest_increasing_subsequence
+// 最长递增子序列
 function getSequence(arr: number[]): number[] {
   const p = arr.slice()
   const result = [0]
   let i, j, u, v, c
   const len = arr.length
   for (i = 0; i < len; i++) {
+    // 当前顺序取出的元素
     const arrI = arr[i]
+    // 排除0的情况
     if (arrI !== 0) {
+      // j 存储的是长度为i 的递增子序列最小末尾值的索引
       j = result[result.length - 1]
+      // arr[j]为末尾值, 如果满足arr[j] < arr[i] 那么直接在当前递增子序列后面添加
       if (arr[j] < arrI) {
+        // 存储result更新前的最后一个索引的值
         p[i] = j
+        // 存储元素对应的索引值
         result.push(i)
         continue
       }
+      // 不满足, 则执行二分搜索
       u = 0
       v = result.length - 1
+      // 查找第一个比arrI小的节点, 更新result的值
       while (u < v) {
+        // 记录中间的位置
         c = (u + v) >> 1
         if (arr[result[c]] < arrI) {
+          // 若中间的值小于arrI, 则在右边, 更新下沿
           u = c + 1
         } else {
+          // 更新上沿
           v = c
         }
       }
+      // 找到第一个比arrI小的位置u, 插入它
       if (arrI < arr[result[u]]) {
         if (u > 0) {
           p[i] = result[u - 1]
         }
+        // 存储插入的位置i
         result[u] = i
       }
     }
   }
   u = result.length
   v = result[u - 1]
+  // 回溯数组p. 找到最终索引
   while (u-- > 0) {
     result[u] = v
     v = p[v]
