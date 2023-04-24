@@ -1207,7 +1207,11 @@ function baseCreateRenderer(
       updateComponent(n1, n2, optimized)
     }
   }
-  /** 挂载组件*/
+  /** 挂载组件,渲染vnode 和 生成DOM
+   * 1: 创建组件实列 -> 维护组件上下文数据, 比如组件需要渲染的props, data, vnode节点,render函数,生命周期函数.把这一系列数据和函数挂载到一个对象上, 可以通过对象访问到它们,就称作组件的实列
+   * 2: 设置组件实列
+   * 3: 设置并运行带副作用的渲染函数
+   * */
   const mountComponent: MountComponentFn = (
     initialVNode,
     container,
@@ -1221,6 +1225,7 @@ function baseCreateRenderer(
     // mounting
     const compatMountInstance =
       __COMPAT__ && initialVNode.isCompatRoot && initialVNode.component
+    // 创建组件实列
     const instance: ComponentInternalInstance =
       compatMountInstance ||
       (initialVNode.component = createComponentInstance(
@@ -1248,6 +1253,7 @@ function baseCreateRenderer(
       if (__DEV__) {
         startMeasure(instance, `init`)
       }
+      // 设置组件实列
       setupComponent(instance)
       if (__DEV__) {
         endMeasure(instance, `init`)
@@ -1267,7 +1273,7 @@ function baseCreateRenderer(
       }
       return
     }
-
+    // 设置并运行带副作用的函数渲染
     setupRenderEffect(
       instance,
       initialVNode,

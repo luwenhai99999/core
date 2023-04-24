@@ -317,41 +317,43 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
       const n = accessCache![key]
       if (n !== undefined) {
         switch (n) {
-          case AccessTypes.SETUP:
+          case AccessTypes.SETUP: // 1
             return setupState[key]
-          case AccessTypes.DATA:
+          case AccessTypes.DATA: // 2
             return data[key]
-          case AccessTypes.CONTEXT:
+          case AccessTypes.CONTEXT: // 4
             return ctx[key]
-          case AccessTypes.PROPS:
+          case AccessTypes.PROPS: // 3
             return props![key]
           // default: just fallthrough
         }
       } else if (hasSetupBinding(setupState, key)) {
-        accessCache![key] = AccessTypes.SETUP
-        return setupState[key]
+        accessCache![key] = AccessTypes.SETUP // 1
+        return setupState[key] // 从setupState中获取数据
       } else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
-        accessCache![key] = AccessTypes.DATA
-        return data[key]
+        accessCache![key] = AccessTypes.DATA // 2
+        return data[key] // 从data 中获取数据
       } else if (
         // only cache other properties when instance has declared (thus stable)
         // props
         (normalizedProps = instance.propsOptions[0]) &&
         hasOwn(normalizedProps, key)
       ) {
-        accessCache![key] = AccessTypes.PROPS
-        return props![key]
+        accessCache![key] = AccessTypes.PROPS // 3
+        return props![key] // 从props中获取数据
       } else if (ctx !== EMPTY_OBJ && hasOwn(ctx, key)) {
-        accessCache![key] = AccessTypes.CONTEXT
-        return ctx[key]
+        accessCache![key] = AccessTypes.CONTEXT // 4
+        return ctx[key] // 从 ctx 中获取数据
       } else if (!__FEATURE_OPTIONS_API__ || shouldCacheAccess) {
-        accessCache![key] = AccessTypes.OTHER
+        accessCache![key] = AccessTypes.OTHER // 0
+        // 都获取不到
       }
     }
 
     const publicGetter = publicPropertiesMap[key]
     let cssModule, globalProperties
     // public $xxx properties
+    // 公开的$xxx 属性或方法
     if (publicGetter) {
       if (key === '$attrs') {
         track(instance, TrackOpTypes.GET, key)
@@ -366,10 +368,12 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
       return cssModule
     } else if (ctx !== EMPTY_OBJ && hasOwn(ctx, key)) {
       // user may set custom properties to `this` that start with `$`
+      // 用户自定义属性也以$开头
       accessCache![key] = AccessTypes.CONTEXT
       return ctx[key]
     } else if (
       // global properties
+      // 全局属性
       ((globalProperties = appContext.config.globalProperties),
       hasOwn(globalProperties, key))
     ) {
@@ -394,6 +398,7 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
         // to infinite warning loop
         key.indexOf('__v') !== 0)
     ) {
+      // 如果在data中定义的数据以$ or _开头, 则发出警告, 原因是$和_是保留字符, 不会做代理
       if (data !== EMPTY_OBJ && isReservedPrefix(key[0]) && hasOwn(data, key)) {
         warn(
           `Property ${JSON.stringify(
@@ -402,6 +407,7 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
             `character ("$" or "_") and is not proxied on the render context.`
         )
       } else if (instance === currentRenderingInstance) {
+        // 如果没有定义的模板中使用变量,则发出警告
         warn(
           `Property ${JSON.stringify(key)} was accessed during render ` +
             `but is not defined on instance.`

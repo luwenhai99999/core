@@ -477,6 +477,14 @@ const emptyAppContext = createAppContext()
 
 let uid = 0
 
+/**
+ * @description: 创建组件实列函数
+ * 1: 创建instance 并进行设置
+ *    设置 渲染上下文 ctx
+ *    设置跟组件指针root
+ *    设置派发事件方法emit
+ * @date: 2023-04-24 6:55;
+ */
 export function createComponentInstance(
   vnode: VNode,
   parent: ComponentInternalInstance | null,
@@ -484,92 +492,97 @@ export function createComponentInstance(
 ) {
   const type = vnode.type as ConcreteComponent
   // inherit parent app context - or - if root, adopt from root vnode
+  // 继承父组件实列上的appContext, 如果是根组件,则直接从根vnode中获取
   const appContext =
     (parent ? parent.appContext : vnode.appContext) || emptyAppContext
 
   const instance: ComponentInternalInstance = {
-    uid: uid++,
-    vnode,
-    type,
-    parent,
-    appContext,
-    root: null!, // to be immediately set
-    next: null,
-    subTree: null!, // will be set synchronously right after creation
-    effect: null!,
-    update: null!, // will be set synchronously right after creation
-    scope: new EffectScope(true /* detached */),
-    render: null,
-    proxy: null,
-    exposed: null,
-    exposeProxy: null,
-    withProxy: null,
-    provides: parent ? parent.provides : Object.create(appContext.provides),
-    accessCache: null!,
-    renderCache: [],
+    uid: uid++, //组件 唯一id
+    vnode, // 组件vnode
+    type, // vnode节点类型
+    parent, // 父组件实列
+    appContext, // app 上下文
+    root: null!, // to be immediately set // 根组件实列
+    next: null, // 新的组件vnode
+    subTree: null!, // will be set synchronously right after creation // 子节点vnode
+    effect: null!, // 响应式相关对象
+    update: null!, // will be set synchronously right after creation // 带副作用更新函数
+    scope: new EffectScope(true /* detached */), // effect作用域
+    render: null, // 渲染函数
+    proxy: null, // 渲染上下文代理
+    exposed: null, // 通过expose暴露属性
+    exposeProxy: null, // 暴露属性的代理
+    withProxy: null, // 带有with区块的渲染上下文代理
+    provides: parent ? parent.provides : Object.create(appContext.provides), // 依赖注入
+    accessCache: null!, // 渲染代理的属性访问缓存
+    renderCache: [], // 渲染缓存
 
     // local resolved assets
-    components: null,
-    directives: null,
+    components: null, // 注册的组件
+    directives: null, // 注册的指令
 
-    // resolved props and emits options
-    propsOptions: normalizePropsOptions(type, appContext),
-    emitsOptions: normalizeEmitsOptions(type, appContext),
+    // resolved props and emits options // 标准化属性和emits配置
+    propsOptions: normalizePropsOptions(type, appContext), // 解析props
+    emitsOptions: normalizeEmitsOptions(type, appContext), // 解析emits
 
-    // emit
+    // emit 派发事件方法
     emit: null!, // to be set immediately
     emitted: null,
 
     // props default value
-    propsDefaults: EMPTY_OBJ,
+    propsDefaults: EMPTY_OBJ, // props属性默认值
 
     // inheritAttrs
-    inheritAttrs: type.inheritAttrs,
+    inheritAttrs: type.inheritAttrs, // 继承属性
 
     // state
-    ctx: EMPTY_OBJ,
-    data: EMPTY_OBJ,
-    props: EMPTY_OBJ,
-    attrs: EMPTY_OBJ,
-    slots: EMPTY_OBJ,
-    refs: EMPTY_OBJ,
-    setupState: EMPTY_OBJ,
-    setupContext: null,
+    ctx: EMPTY_OBJ, // 渲染上下文
+    data: EMPTY_OBJ, // data数据
+    props: EMPTY_OBJ, // props数据
+    attrs: EMPTY_OBJ, // 普通属性
+    slots: EMPTY_OBJ, // 插槽
+    refs: EMPTY_OBJ, // 组件或者dom的ref引用
+    setupState: EMPTY_OBJ, // setup函数返回的响应式结果
+    setupContext: null, // setup函数上下文数据
 
     // suspense related
-    suspense,
+    suspense, // 异步依赖
     suspenseId: suspense ? suspense.pendingId : 0,
     asyncDep: null,
     asyncResolved: false,
 
     // lifecycle hooks
     // not using enums here because it results in computed properties
-    isMounted: false,
-    isUnmounted: false,
-    isDeactivated: false,
-    bc: null,
-    c: null,
-    bm: null,
-    m: null,
-    bu: null,
-    u: null,
-    um: null,
-    bum: null,
-    da: null,
-    a: null,
-    rtg: null,
-    rtc: null,
-    ec: null,
+    isMounted: false, // 是否挂载
+    isUnmounted: false, // 是否卸载
+    isDeactivated: false, // 是否激活
+    bc: null, // 生命周期before create
+    c: null, // 生命周期 created
+    bm: null, // 生命周期 before mount
+    m: null, // 生命周期 mounted
+    bu: null, // 生命周期 before update
+    u: null, // 生命周期 updated
+    um: null, // 生命周期 unmounted
+    bum: null, // 生命周期 before unmount
+    da: null, // 生命周期 deactivated
+    a: null, // 生命周期 activated
+    rtg: null, // 生命周期 render triggered
+    rtc: null, // 生命周期 render tracked
+    ec: null, // 生命周期 error captured
     sp: null
   }
+  // 初始化渲染上下文
   if (__DEV__) {
     instance.ctx = createDevRenderContext(instance)
   } else {
     instance.ctx = { _: instance }
   }
+  // 初始化跟组件指针
   instance.root = parent ? parent.root : instance
+  // 初始化派发事件方法
   instance.emit = emit.bind(null, instance)
 
+  // 执行自定义元素特殊的处理器
   // apply custom element special handling
   if (vnode.ce) {
     vnode.ce(instance)
@@ -648,17 +661,25 @@ export function isStatefulComponent(instance: ComponentInternalInstance) {
 
 export let isInSSRComponentSetup = false
 
+/**
+ * @description: setup函数的处理
+ * @date: 2023-04-24 7:24;
+ */
 export function setupComponent(
   instance: ComponentInternalInstance,
-  isSSR = false
+  isSSR = false // 是否是服务端渲染
 ) {
   isInSSRComponentSetup = isSSR
 
   const { props, children } = instance.vnode
+  // 是否是一个有状态的组件
+  // 有状态: 组件会在渲染过程中把一些状态挂载到组件实列对应的属性上
   const isStateful = isStatefulComponent(instance)
+  // 初始化props
   initProps(instance, props, isStateful, isSSR)
+  // 初始化插槽
   initSlots(instance, children)
-
+  // 设置有状态的组件实列
   const setupResult = isStateful
     ? setupStatefulComponent(instance, isSSR)
     : undefined
@@ -666,6 +687,13 @@ export function setupComponent(
   return setupResult
 }
 
+/**
+ * @description: 有状态的组件实列特殊处理
+ * 1: 创建渲染上下文代理
+ * 2: 判断处理setup函数
+ * 3: 完成组件实列设置
+ * @date: 2023-04-24 7:30;
+ */
 function setupStatefulComponent(
   instance: ComponentInternalInstance,
   isSSR: boolean
@@ -697,21 +725,26 @@ function setupStatefulComponent(
     }
   }
   // 0. create render proxy property access cache
+  // 创建渲染代理的属性访问缓存
   instance.accessCache = Object.create(null)
   // 1. create public instance / render proxy
   // also mark it raw so it's never observed
+  // 创建渲染函数上下文代理
   instance.proxy = markRaw(new Proxy(instance.ctx, PublicInstanceProxyHandlers))
   if (__DEV__) {
     exposePropsOnRenderContext(instance)
   }
   // 2. call setup()
+  // 判断处理setup函数
   const { setup } = Component
   if (setup) {
+    // 如果setup函数带参数, 则创建一个setupContext
     const setupContext = (instance.setupContext =
       setup.length > 1 ? createSetupContext(instance) : null)
 
     setCurrentInstance(instance)
     pauseTracking()
+    // 执行setup函数, 获取返回值
     const setupResult = callWithErrorHandling(
       setup,
       instance,
@@ -752,9 +785,11 @@ function setupStatefulComponent(
         )
       }
     } else {
+      // 处理setup返回值
       handleSetupResult(instance, setupResult, isSSR)
     }
   } else {
+    // 完成组件实列设置
     finishComponentSetup(instance, isSSR)
   }
 }
