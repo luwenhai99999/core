@@ -794,6 +794,10 @@ function setupStatefulComponent(
   }
 }
 
+/**
+ * @description: 处理setup函数返回值
+ * @date: 2023-04-25 8:11;
+ */
 export function handleSetupResult(
   instance: ComponentInternalInstance,
   setupResult: unknown,
@@ -858,6 +862,12 @@ export function registerRuntimeCompiler(_compile: any) {
 // dev only
 export const isRuntimeOnly = () => !compile
 
+/**
+ * @description: 完成组件实列设置
+ * @date: 2023-05-08 7:09;
+ * 1: 标准化模板
+ * 2: 兼容options API
+ */
 export function finishComponentSetup(
   instance: ComponentInternalInstance,
   isSSR: boolean,
@@ -875,9 +885,11 @@ export function finishComponentSetup(
 
   // template / render function normalization
   // could be already set when returned from setup()
+  // 对模板或者渲染函数进行标准化
   if (!instance.render) {
     // only do on-the-fly compile if not in SSR - SSR on-the-fly compilation
     // is done by server-renderer
+    // 运行时编译
     if (!isSSR && compile && !Component.render) {
       const template =
         (__COMPAT__ &&
@@ -916,18 +928,19 @@ export function finishComponentSetup(
         }
       }
     }
-
+    // 把组件对象的render函数赋值给instance.render属性
     instance.render = (Component.render || NOOP) as InternalRenderFunction
-
     // for runtime-compiled render functions using `with` blocks, the render
     // proxy used needs a different `has` handler which is more performant and
     // also only allows a whitelist of globals to fallthrough.
+    // 对于使用with块的运行时编译的渲染函数,使用新的渲染上下文的代理
     if (installWithProxy) {
       installWithProxy(instance)
     }
   }
 
   // support for 2.x options
+  // 兼容vue2 options api
   if (__FEATURE_OPTIONS_API__ && !(__COMPAT__ && skipOptions)) {
     setCurrentInstance(instance)
     pauseTracking()
@@ -953,6 +966,7 @@ export function finishComponentSetup(
             : ``) /* should not happen */
       )
     } else {
+      // 既没写template也没写render函数
       warn(`Component is missing template or render function.`)
     }
   }
@@ -986,6 +1000,11 @@ function createAttrsProxy(instance: ComponentInternalInstance): Data {
   )
 }
 
+/**
+ * @description: 当setup参数大于1  则 创建setup上下文。
+ * 返回attrs, slots , emit三个属性以及 expose函数
+ * @date: 2023-04-25 7:47;
+ */
 export function createSetupContext(
   instance: ComponentInternalInstance
 ): SetupContext {

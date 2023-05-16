@@ -605,6 +605,9 @@ function createDuplicateChecker() {
 
 export let shouldCacheAccess = true
 
+/**
+ * @description: 兼容vue2主要函数
+ */
 export function applyOptions(instance: ComponentInternalInstance) {
   const options = resolveMergedOptions(instance)
   const publicThis = instance.proxy! as any
@@ -620,14 +623,14 @@ export function applyOptions(instance: ComponentInternalInstance) {
   }
 
   const {
-    // state
+    // state 组合状态
     data: dataOptions,
     computed: computedOptions,
     methods,
     watch: watchOptions,
     provide: provideOptions,
     inject: injectOptions,
-    // lifecycle
+    // lifecycle 生命周期
     created,
     beforeMount,
     mounted,
@@ -647,7 +650,7 @@ export function applyOptions(instance: ComponentInternalInstance) {
     // public API
     expose,
     inheritAttrs,
-    // assets
+    // assets 组件， 指令
     components,
     directives,
     filters
@@ -680,7 +683,7 @@ export function applyOptions(instance: ComponentInternalInstance) {
       instance.appContext.config.unwrapInjectedRef
     )
   }
-
+  // 处理methods
   if (methods) {
     for (const key in methods) {
       const methodHandler = (methods as MethodOptions)[key]

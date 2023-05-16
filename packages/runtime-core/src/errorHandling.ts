@@ -60,6 +60,10 @@ export const ErrorTypeStrings: Record<LifecycleHooks | ErrorCodes, string> = {
 
 export type ErrorTypes = LifecycleHooks | ErrorCodes
 
+/**
+ * @description: 执行函数， 并捕获和处理函数执行期间的错误
+ * @date: 2023-04-25 7:54;
+ */
 export function callWithErrorHandling(
   fn: Function,
   instance: ComponentInternalInstance | null,
@@ -98,6 +102,10 @@ export function callWithAsyncErrorHandling(
   return values
 }
 
+/**
+ * @description: 错误处理函数
+ * @date: 2023-05-16 7:30;
+ */
 export function handleError(
   err: unknown,
   instance: ComponentInternalInstance | null,

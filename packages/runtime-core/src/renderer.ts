@@ -1344,8 +1344,10 @@ function baseCreateRenderer(
     isSVG,
     optimized
   ) => {
+    // 组件的渲染和更新函数
     const componentUpdateFn = () => {
       if (!instance.isMounted) {
+        // 渲染组件
         let vnodeHook: VNodeHook | null | undefined
         const { el, props } = initialVNode
         const { bm, m, parent } = instance
@@ -1353,6 +1355,7 @@ function baseCreateRenderer(
 
         toggleRecurse(instance, false)
         // beforeMount hook
+        // 执行beforeMount 钩子函数
         if (bm) {
           invokeArrayFns(bm)
         }
@@ -2330,7 +2333,10 @@ function baseCreateRenderer(
     }
     hostRemove(end)
   }
-
+  /**
+   * @description: 组件销毁相关逻辑
+   * @date: 2023-05-16 7:24;
+   */
   const unmountComponent = (
     instance: ComponentInternalInstance,
     parentSuspense: SuspenseBoundary | null,
@@ -2343,6 +2349,7 @@ function baseCreateRenderer(
     const { bum, scope, update, subTree, um } = instance
 
     // beforeUnmount hook
+    // 执行beforeUnmount钩子
     if (bum) {
       invokeArrayFns(bum)
     }
@@ -2355,16 +2362,20 @@ function baseCreateRenderer(
     }
 
     // stop effects in component scope
+    // 清理组件引用的effect副作用函数
     scope.stop()
 
     // update may be null if a component is unmounted before its async
     // setup has resolved.
+    // 如果一个异步组件在加载前就被销毁了,则不会注册副作用渲染函数
     if (update) {
       // so that scheduler will no longer invoke it
+      // 所以调用unmount销毁子树
       update.active = false
       unmount(subTree, instance, parentSuspense, doRemove)
     }
     // unmounted hook
+    // 如果有unmounted钩子函数,则推入待执行钩子栈中
     if (um) {
       queuePostRenderEffect(um, parentSuspense)
     }

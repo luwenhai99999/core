@@ -43,6 +43,7 @@ export const isAsyncWrapper = (i: ComponentInternalInstance | VNode): boolean =>
 export function defineAsyncComponent<
   T extends Component = { new (): ComponentPublicInstance }
 >(source: AsyncComponentLoader<T> | AsyncComponentOptions<T>): T {
+  // 标准化参数, 如果source是一个函数,就转化为一个对象
   if (isFunction(source)) {
     source = { loader: source }
   }
@@ -61,14 +62,16 @@ export function defineAsyncComponent<
   let resolvedComp: ConcreteComponent | undefined
 
   let retries = 0
+  // 重试函数
   const retry = () => {
     retries++
     pendingRequest = null
     return load()
   }
-
+  // 加载异步组件, 获取组件模块的定义对象
   const load = (): Promise<ConcreteComponent> => {
     let thisRequest: Promise<ConcreteComponent>
+    // 多个异步组件同时加载,多次调用load,只请求一次
     return (
       pendingRequest ||
       (thisRequest = pendingRequest =

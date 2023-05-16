@@ -14,17 +14,22 @@ import { LifecycleHooks } from './enums'
 
 export { onActivated, onDeactivated } from './components/KeepAlive'
 
+/**
+ * @description: 钩子函数注册
+ * @date: 2023-05-16 7:09;
+ */
 export function injectHook(
-  type: LifecycleHooks,
-  hook: Function & { __weh?: Function },
-  target: ComponentInternalInstance | null = currentInstance,
-  prepend: boolean = false
+  type: LifecycleHooks, // 钩子类型
+  hook: Function & { __weh?: Function }, // 钩子函数
+  target: ComponentInternalInstance | null = currentInstance, // 组件实列
+  prepend: boolean = false // 当前已有的钩子函数前面插入
 ): Function | undefined {
   if (target) {
     const hooks = target[type] || (target[type] = [])
     // cache the error handling wrapper for injected hooks so the same hook
     // can be properly deduped by the scheduler. "__weh" stands for "with error
     // handling".
+    // 封装钩子函数并缓存
     const wrappedHook =
       hook.__weh ||
       (hook.__weh = (...args: unknown[]) => {
@@ -33,13 +38,17 @@ export function injectHook(
         }
         // disable tracking inside all lifecycle hooks
         // since they can potentially be called inside effects.
+        // 停止收集依赖
         pauseTracking()
         // Set currentInstance during hook invocation.
         // This assumes the hook does not synchronously trigger other hooks, which
         // can only be false when the user does something really funky.
+        // 设置target为当前运行的组件实列
         setCurrentInstance(target)
+        // 执行钩子函数
         const res = callWithAsyncErrorHandling(hook, target, type, args)
         unsetCurrentInstance()
+        // 恢复收集依赖
         resetTracking()
         return res
       })
@@ -63,6 +72,10 @@ export function injectHook(
   }
 }
 
+/**
+ * @description: 生命周期钩子函数注册
+ * @date: 2023-05-16 7:04;
+ */
 export const createHook =
   <T extends Function = () => any>(lifecycle: LifecycleHooks) =>
   (hook: T, target: ComponentInternalInstance | null = currentInstance) =>
